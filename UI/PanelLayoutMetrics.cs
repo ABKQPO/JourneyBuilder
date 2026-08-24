@@ -12,6 +12,7 @@ namespace JourneyBuilder
         public const int Padding = 8;
         public const int LayoutSpacing = 4;
         public const int SettingRowHeight = 54;
+        public const bool UseContentClipping = false;
 
         public const int ContentHeight = PanelHeight - HeaderHeight - Padding;
 

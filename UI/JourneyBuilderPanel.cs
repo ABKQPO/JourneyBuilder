@@ -39,7 +39,7 @@ namespace JourneyBuilder.UI
                 PanelLayoutMetrics.PanelWidth, PanelLayoutMetrics.PanelHeight)
             {
                 CloseOnEscape = true,
-                ClipContent = true,
+                ClipContent = PanelLayoutMetrics.UseContentClipping,
                 OnClose = OnPanelClosed
             };
         }

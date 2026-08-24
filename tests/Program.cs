@@ -45,6 +45,8 @@ static class Program
 
         Check("panel content has room for every control",
             PanelLayoutMetrics.RequiredContentHeight(true) <= PanelLayoutMetrics.ContentHeight);
+        Check("panel disables Core clipping under UI scale",
+            !PanelLayoutMetrics.UseContentClipping);
 
         Console.WriteLine($"{_passed} checks passed");
         return 0;

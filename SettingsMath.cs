@@ -29,6 +29,7 @@ namespace JourneyBuilder
     public static class SettingsMath
     {
         public const float MaxSpeedMultiplier = 7f;
+        private const float MinimumDelayFactor = 1f / MaxSpeedMultiplier;
 
         public static RangeValues MapRange(int range)
         {
@@ -38,7 +39,7 @@ namespace JourneyBuilder
 
         public static float ApplyBreakSpeed(float pickSpeed, float multiplier)
         {
-            return pickSpeed / Math.Max(0.1f, multiplier);
+            return ApplyCappedDelayFactor(pickSpeed, multiplier);
         }
 
         public static int ApplyBreakDelay(int frames, float multiplier)
@@ -46,16 +47,30 @@ namespace JourneyBuilder
             if (frames <= 0)
                 return frames;
 
-            int adjusted = (int)(frames / Math.Max(0.1f, multiplier));
-            return Math.Max(1, adjusted);
+            float adjusted = ApplyCappedDelayFactor(frames, multiplier);
+            return Math.Max(1, (int)Math.Ceiling(adjusted));
         }
 
         public static PlacementSpeedValues ApplyPlacementSpeed(float tileSpeed, float wallSpeed, float multiplier)
         {
-            float factor = Math.Max(0.1f, multiplier);
-            // Terraria multiplies these values into useTime, so a larger
-            // multiplier must reduce the delay rather than increase it.
-            return new PlacementSpeedValues(tileSpeed / factor, wallSpeed / factor);
+            // These values are already the final vanilla delay factors after
+            // UpdateEquips has applied accessories, buffs and Journey bonuses.
+            // Apply the requested multiplier here, then cap the resulting
+            // total speed at 7x so vanilla acceleration cannot be multiplied
+            // beyond the configured global limit.
+            return new PlacementSpeedValues(
+                ApplyCappedDelayFactor(tileSpeed, multiplier),
+                ApplyCappedDelayFactor(wallSpeed, multiplier));
+        }
+
+        public static float ApplyCappedDelayFactor(float vanillaDelayFactor, float multiplier)
+        {
+            if (vanillaDelayFactor <= 0f)
+                return vanillaDelayFactor;
+
+            float requested = Math.Max(0.1f, multiplier);
+            float combined = vanillaDelayFactor / requested;
+            return Math.Max(MinimumDelayFactor, combined);
         }
 
         public static int ClampToServer(int value, int serverMax, int minimum)

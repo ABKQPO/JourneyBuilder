@@ -23,10 +23,10 @@ namespace JourneyBuilder
         [Client, Label("Break Range"), Description("Base tool and mining range in tiles. Item-specific tile boosts are preserved."), Range(1, 100)]
         public int BreakRange { get; set; } = 5;
 
-        [Client, Label("Placement Speed"), Description("Placement speed multiplier. 2x takes half as many frames."), Range(0.1f, SettingsMath.MaxSpeedMultiplier)]
+        [Client, Label("Placement Speed"), Description("Total placement speed multiplier, including vanilla bonuses. The final speed is capped at 7x."), Range(0.1f, SettingsMath.MaxSpeedMultiplier)]
         public float PlacementSpeed { get; set; } = 1f;
 
-        [Client, Label("Break Speed"), Description("Mining and breaking speed multiplier. 2x takes half as many frames."), Range(0.1f, SettingsMath.MaxSpeedMultiplier)]
+        [Client, Label("Break Speed"), Description("Total mining and breaking speed multiplier, including vanilla bonuses. The final speed is capped at 7x."), Range(0.1f, SettingsMath.MaxSpeedMultiplier)]
         public float BreakSpeed { get; set; } = 1f;
 
         [Server, Label("Max Placement Range"), Description("Maximum placement range clients may configure."), Range(1, 100)]
@@ -35,10 +35,10 @@ namespace JourneyBuilder
         [Server, Label("Max Break Range"), Description("Maximum break range clients may configure."), Range(1, 100)]
         public int MaxBreakRange { get; set; } = 100;
 
-        [Server, Label("Max Placement Speed"), Description("Maximum placement speed multiplier clients may configure (up to 7x)."), Range(0.1f, SettingsMath.MaxSpeedMultiplier)]
+        [Server, Label("Max Placement Speed"), Description("Maximum total placement speed, including vanilla bonuses (up to 7x)."), Range(0.1f, SettingsMath.MaxSpeedMultiplier)]
         public float MaxPlacementSpeed { get; set; } = SettingsMath.MaxSpeedMultiplier;
 
-        [Server, Label("Max Break Speed"), Description("Maximum break speed multiplier clients may configure (up to 7x)."), Range(0.1f, SettingsMath.MaxSpeedMultiplier)]
+        [Server, Label("Max Break Speed"), Description("Maximum total mining speed, including vanilla bonuses (up to 7x)."), Range(0.1f, SettingsMath.MaxSpeedMultiplier)]
         public float MaxBreakSpeed { get; set; } = SettingsMath.MaxSpeedMultiplier;
     }
 
