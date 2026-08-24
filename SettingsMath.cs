@@ -41,6 +41,15 @@ namespace JourneyBuilder
             return pickSpeed / Math.Max(0.1f, multiplier);
         }
 
+        public static int ApplyBreakDelay(int frames, float multiplier)
+        {
+            if (frames <= 0)
+                return frames;
+
+            int adjusted = (int)(frames / Math.Max(0.1f, multiplier));
+            return Math.Max(1, adjusted);
+        }
+
         public static PlacementSpeedValues ApplyPlacementSpeed(float tileSpeed, float wallSpeed, float multiplier)
         {
             float factor = Math.Max(0.1f, multiplier);

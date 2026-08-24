@@ -29,6 +29,12 @@ static class Program
         Check("higher speed multipliers reduce placement delay",
             SettingsMath.ApplyPlacementSpeed(1f, 1f, 2f).Tile < SettingsMath.ApplyPlacementSpeed(1f, 1f, 0.5f).Tile);
 
+        Check("direct mining tool delay uses break multiplier",
+            SettingsMath.ApplyBreakDelay(20, 2f) == 10);
+
+        Check("break delay keeps one frame minimum",
+            SettingsMath.ApplyBreakDelay(1, 7f) == 1);
+
         Check("speed multiplier cap is seven",
             Math.Abs(SettingsMath.ClampToServer(20f, SettingsMath.MaxSpeedMultiplier, 0.1f) - 7f) < 0.0001f);
 

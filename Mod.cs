@@ -53,8 +53,11 @@ namespace JourneyBuilder
         private Harmony _harmony;
         private MethodInfo _itemCheckMethod;
         private MethodInfo _tileReachMethod;
+        private MethodInfo _miningToolMethod;
+        private MethodInfo _wallHitMethod;
+        private MethodInfo _smartToolStrategyMethod;
         [ThreadStatic]
-        private static bool _itemCheckActive;
+        private static bool _smartToolStrategyActive;
         private JourneyBuilderPanel _panel;
         private DateTime _clampNoticeUntilUtc;
 
@@ -129,11 +132,20 @@ namespace JourneyBuilder
                     new[] { typeof(int), typeof(int), typeof(TileReachCheckSettings), typeof(int) },
                     null);
 
+                _miningToolMethod = typeof(Player).GetMethod(
+                    "ItemCheck_UseMiningTools_ActuallyUseMiningTool",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                _wallHitMethod = typeof(Player).GetMethod(
+                    "ItemCheck_UseMiningTools_TryHittingWall",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+                _smartToolStrategyMethod = typeof(Player).GetMethod(
+                    "SmartSelect_GetToolStrategy",
+                    BindingFlags.NonPublic | BindingFlags.Instance);
+
                 _harmony = new Harmony(HarmonyId);
                 _harmony.Patch(
                     _itemCheckMethod,
-                    prefix: new HarmonyMethod(typeof(Mod), nameof(ItemCheckPrefix)),
-                    postfix: new HarmonyMethod(typeof(Mod), nameof(ItemCheckPostfix)));
+                    prefix: new HarmonyMethod(typeof(Mod), nameof(ItemCheckPrefix)));
 
                 if (_tileReachMethod != null)
                 {
@@ -143,6 +155,33 @@ namespace JourneyBuilder
                 else
                 {
                     _log.Warn("JourneyBuilder: Player.IsInTileInteractionRange() was not found; range limits may remain vanilla.");
+                }
+
+                if (_miningToolMethod != null)
+                {
+                    _harmony.Patch(_miningToolMethod,
+                        postfix: new HarmonyMethod(typeof(Mod), nameof(MiningToolPostfix)));
+                }
+                else
+                {
+                    _log.Warn("JourneyBuilder: mining tool method was not found; axe/hammer timing remains vanilla.");
+                }
+
+                if (_wallHitMethod != null)
+                {
+                    _harmony.Patch(_wallHitMethod,
+                        postfix: new HarmonyMethod(typeof(Mod), nameof(WallHitPostfix)));
+                }
+                else
+                {
+                    _log.Warn("JourneyBuilder: wall hammer method was not found; wall removal timing remains vanilla.");
+                }
+
+                if (_smartToolStrategyMethod != null)
+                {
+                    _harmony.Patch(_smartToolStrategyMethod,
+                        prefix: new HarmonyMethod(typeof(Mod), nameof(SmartToolStrategyPrefix)),
+                        postfix: new HarmonyMethod(typeof(Mod), nameof(SmartToolStrategyPostfix)));
                 }
 
                 _log.Info("JourneyBuilder: patched Player.ItemCheck().");
@@ -173,8 +212,6 @@ namespace JourneyBuilder
                     (heldItem.pick > 0 || heldItem.hammer > 0 || heldItem.axe > 0));
                 if (!isTool)
                     return;
-
-                _itemCheckActive = true;
 
                 int requestedRange = isPlacement ? mod._config.PlacementRange : mod._config.BreakRange;
                 int maxRange = isPlacement ? mod._config.MaxPlacementRange : mod._config.MaxBreakRange;
@@ -207,17 +244,62 @@ namespace JourneyBuilder
             }
         }
 
-        private static void ItemCheckPostfix()
+        private static void MiningToolPostfix(Player __instance, Item sItem, int x, int y)
         {
-            _itemCheckActive = false;
+            Mod mod = _instance;
+            if (!CanModifyPlayer(__instance, mod) || sItem == null || sItem.type == 4711 ||
+                __instance.itemTime <= 0 || Main.tile == null || !WorldGen.InWorld(x, y, 1))
+                return;
+
+            Tile tile = Main.tile[x, y];
+            if (tile == null)
+                return;
+
+            bool directToolTiming =
+                (sItem.axe > 0 && Main.tileAxe[tile.type]) ||
+                (sItem.hammer > 0 && Main.tileHammer[tile.type]);
+            if (!directToolTiming || __instance.itemTime != sItem.useTime)
+                return;
+
+            float speed = SettingsMath.ClampToServer(
+                mod._config.BreakSpeed, mod._config.MaxBreakSpeed, 0.1f);
+            __instance.SetItemTime(SettingsMath.ApplyBreakDelay(__instance.itemTime, speed));
+        }
+
+        private static void WallHitPostfix(Player __instance, Item sItem, int wX, int wY)
+        {
+            Mod mod = _instance;
+            if (!CanModifyPlayer(__instance, mod) || sItem == null || sItem.hammer <= 0 ||
+                __instance.itemTime <= 0 || __instance.itemTime != sItem.useTime / 2)
+                return;
+
+            float speed = SettingsMath.ClampToServer(
+                mod._config.BreakSpeed, mod._config.MaxBreakSpeed, 0.1f);
+            __instance.SetItemTime(SettingsMath.ApplyBreakDelay(__instance.itemTime, speed));
+        }
+
+        private static void SmartToolStrategyPrefix(Player __instance)
+        {
+            Mod mod = _instance;
+            _smartToolStrategyActive = CanModifyPlayer(__instance, mod);
+        }
+
+        private static void SmartToolStrategyPostfix()
+        {
+            _smartToolStrategyActive = false;
+        }
+
+        private static bool CanModifyPlayer(Player player, Mod mod)
+        {
+            return mod != null && mod._config != null && mod._config.Enabled &&
+                player != null && Main.player != null && Main.myPlayer >= 0 &&
+                Main.myPlayer < Main.player.Length && player == Main.player[Main.myPlayer];
         }
 
         private static void TileReachPrefix(Player __instance, ref TileReachCheckSettings settings)
         {
             Mod mod = _instance;
-            if (!_itemCheckActive || mod == null || mod._config == null || !mod._config.Enabled ||
-                __instance == null || Main.player == null || Main.myPlayer < 0 ||
-                Main.myPlayer >= Main.player.Length || __instance != Main.player[Main.myPlayer])
+            if (!CanModifyPlayer(__instance, mod))
                 return;
 
             try
@@ -225,6 +307,10 @@ namespace JourneyBuilder
                 Item heldItem = __instance.HeldItem;
                 bool isPlacement = heldItem != null &&
                     (heldItem.createTile >= 0 || heldItem.createWall >= 0 || heldItem.tileWand > 0);
+                bool isTool = isPlacement || (heldItem != null &&
+                    (heldItem.pick > 0 || heldItem.hammer > 0 || heldItem.axe > 0));
+                if (!isTool && !_smartToolStrategyActive)
+                    return;
                 int requestedRange = isPlacement ? mod._config.PlacementRange : mod._config.BreakRange;
                 int maxRange = isPlacement ? mod._config.MaxPlacementRange : mod._config.MaxBreakRange;
                 RangeValues range = SettingsMath.MapRange(
@@ -304,7 +390,10 @@ namespace JourneyBuilder
             _harmony = null;
             _itemCheckMethod = null;
             _tileReachMethod = null;
-            _itemCheckActive = false;
+            _miningToolMethod = null;
+            _wallHitMethod = null;
+            _smartToolStrategyMethod = null;
+            _smartToolStrategyActive = false;
 
             if (_panel != null)
             {

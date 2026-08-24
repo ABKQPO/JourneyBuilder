@@ -46,6 +46,7 @@
     <Compile Remove="bin\**" />
     <Compile Remove="obj\**" />
     <Compile Remove="tests\**" />
+    <Compile Remove="_*.decompiled.cs" />
     <JourneyBuilderLocalization Include="localization\*.json" />
   </ItemGroup>
 

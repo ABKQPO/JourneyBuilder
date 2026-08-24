@@ -8,6 +8,7 @@ TestResults/
 
 # Local Terraria runtime files copied for inspection or decompilation.
 # Builds reference the sibling terraria-modder checkout instead.
+_*.decompiled.cs
 Microsoft.Xna.Framework.RuntimeProfile
 Terraria.GameContent.*
 Terraria.IO.Data.*
