@@ -2,7 +2,6 @@ using System;
 using System.Globalization;
 using TerrariaModder.Core.Input;
 using TerrariaModder.Core.Logging;
-using TerrariaModder.Core.Localization;
 using TerrariaModder.Core.UI;
 using TerrariaModder.Core.UI.Widgets;
 
@@ -249,6 +248,6 @@ namespace JourneyBuilder.UI
         }
 
         private static string Text(string key, string fallback)
-            => LocalizationManager.Get("journey-builder", key, fallback);
+            => JourneyBuilderLocalization.Get(key, fallback);
     }
 }

@@ -75,6 +75,8 @@ namespace JourneyBuilder
                 return;
             }
 
+            JourneyBuilderLocalization.Initialize(context, _config);
+
             ClampClientValues();
 
             if (context.IsServer)
@@ -83,7 +85,12 @@ namespace JourneyBuilder
                 return;
             }
 
-            context.RegisterKeybind("toggle", "Toggle JourneyBuilder Panel", "Open or close the JourneyBuilder settings panel", "O", TogglePanel);
+            context.RegisterKeybind(
+                "toggle",
+                JourneyBuilderLocalization.Get("keybind.toggle.label", "Toggle JourneyBuilder Panel"),
+                JourneyBuilderLocalization.Get("keybind.toggle.description", "Open or close the JourneyBuilder settings panel"),
+                "O",
+                TogglePanel);
             _panel = new JourneyBuilderPanel(_config, ClampClientValues, () => DateTime.UtcNow < _clampNoticeUntilUtc, OnPanelChanged, _log);
             _panel.RegisterDrawCallback();
 
