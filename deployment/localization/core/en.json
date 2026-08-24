@@ -1,0 +1,10 @@
+{
+  "text.Yes": "@UI.Yes",
+  "text.No": "@UI.No",
+  "text.Cancel": "@UI.Cancel",
+  "text.Save": "@UI.Save",
+  "text.Reset": "@UI.Reset",
+  "text.Close": "@UI.Close",
+  "text.Enabled": "@UI.Enabled",
+  "text.No items found": "@UI.NoItemsFound"
+}

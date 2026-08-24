@@ -1,0 +1,16 @@
+{
+  "id": "journey-builder",
+  "name": "JourneyBuilder",
+  "version": "1.0.0",
+  "author": "JourneyBuilder",
+  "description": "Adjust Terraria placement and breaking range and speed with an in-game panel.",
+  "entry_dll": "JourneyBuilder.dll",
+  "keybinds": [
+    {
+      "id": "toggle",
+      "label": "Toggle JourneyBuilder Panel",
+      "description": "Open or close the JourneyBuilder settings panel",
+      "default": "O"
+    }
+  ]
+}

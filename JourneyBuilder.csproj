@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>JourneyBuilder</AssemblyName>
+    <RootNamespace>JourneyBuilder</RootNamespace>
+    <OutputType>Library</OutputType>
+    <LangVersion>latest</LangVersion>
+    <OutputPath>build\plugins\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <TerrariaModderRoot Condition="'$(TerrariaModderRoot)' == ''">..\terraria-modder</TerrariaModderRoot>
+    <TerrariaRoot Condition="'$(TerrariaRoot)' == ''">$(TerrariaModderRoot)\Terraria</TerrariaRoot>
+    <HarmonyPath Condition="'$(HarmonyPath)' == ''">$(TerrariaModderRoot)\build\core\0Harmony.dll</HarmonyPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(TerrariaModderRoot)\src\Core\TerrariaModder.Core.csproj" AdditionalProperties="TerrariaRoot=$(TerrariaRoot)">
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>$(HarmonyPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Terraria">
+      <HintPath>$(TerrariaRoot)\Terraria.exe</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
+      <HintPath>C:\Windows\Microsoft.NET\assembly\GAC_32\Microsoft.Xna.Framework\v4.0_4.0.0.0__842cf8be1de50553\Microsoft.Xna.Framework.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Xna.Framework.Graphics, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
+      <HintPath>C:\Windows\Microsoft.NET\assembly\GAC_32\Microsoft.Xna.Framework.Graphics\v4.0_4.0.0.0__842cf8be1de50553\Microsoft.Xna.Framework.Graphics.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.Xna.Framework.Game, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
+      <HintPath>C:\Windows\Microsoft.NET\assembly\GAC_32\Microsoft.Xna.Framework.Game\v4.0_4.0.0.0__842cf8be1de50553\Microsoft.Xna.Framework.Game.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="bin\**" />
+    <Compile Remove="obj\**" />
+    <Compile Remove="tests\**" />
+    <JourneyBuilderLocalization Include="localization\*.json" />
+  </ItemGroup>
+
+  <Target Name="PackageJourneyBuilder" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <MakeDir Directories="build\package\journey-builder" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="build\package\journey-builder" />
+    <Copy SourceFiles="manifest.json" DestinationFolder="build\package\journey-builder" />
+    <Copy SourceFiles="README.md" DestinationFolder="build\package\journey-builder" />
+    <MakeDir Directories="build\package\journey-builder\localization" />
+    <Copy SourceFiles="@(JourneyBuilderLocalization)" DestinationFolder="build\package\journey-builder\localization" />
+  </Target>
+</Project>
