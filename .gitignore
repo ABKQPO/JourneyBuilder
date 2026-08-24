@@ -1,0 +1,35 @@
+# Build and package output
+[Bb]in/
+[Oo]bj/
+build/
+tests/[Bb]in/
+tests/[Oo]bj/
+TestResults/
+
+# Local Terraria runtime files copied for inspection or decompilation.
+# Builds reference the sibling terraria-modder checkout instead.
+Microsoft.Xna.Framework.RuntimeProfile
+Terraria.GameContent.*
+Terraria.IO.Data.*
+Terraria.Libraries.*
+Terraria.Localization.Content.*
+terraria.il
+terraria.res
+
+# IDE and user-specific settings
+.vs/
+.idea/
+*.user
+*.suo
+*.userossc
+*.sln.docstates
+*.pdb
+*.cache
+*.nupkg
+
+# Temporary diagnostics
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
