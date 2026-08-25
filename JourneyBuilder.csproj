@@ -53,7 +53,7 @@
   <Target Name="PackageJourneyBuilder" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
     <MakeDir Directories="build\package\journey-builder" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="build\package\journey-builder" />
-    <Copy SourceFiles="manifest.json" DestinationFolder="build\package\journey-builder" />
+    <Copy SourceFiles="manifest.json;icon.png" DestinationFolder="build\package\journey-builder" />
     <Copy SourceFiles="README.md" DestinationFolder="build\package\journey-builder" />
     <MakeDir Directories="build\package\journey-builder\localization" />
     <Copy SourceFiles="@(JourneyBuilderLocalization)" DestinationFolder="build\package\journey-builder\localization" />
