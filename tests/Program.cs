@@ -32,11 +32,20 @@ static class Program
         Check("direct mining tool delay uses break multiplier",
             SettingsMath.ApplyBreakDelay(20, 2f) == 10);
 
+        Check("axe use delay applies the break multiplier after vanilla writes useTime",
+            SettingsMath.ApplyToolUseDelay(30, 4f) == 8);
+
+        Check("hammer use delay applies the break multiplier after vanilla writes useTime",
+            SettingsMath.ApplyToolUseDelay(29, 4f) == 8);
+
         Check("break delay keeps one frame minimum",
             SettingsMath.ApplyBreakDelay(1, 7f) == 1);
 
         Check("wall-breaking delay uses the configured multiplier",
             SettingsMath.ApplyWallBreakDelay(30, 2f) == 15);
+
+        Check("wall placement cooldown applies the placement multiplier after vanilla wallSpeed",
+            SettingsMath.ApplyWallPlacementDelay(25, 4f) == 7);
 
         Check("speed multiplier cap is seven",
             Math.Abs(SettingsMath.ClampToServer(20f, SettingsMath.MaxSpeedMultiplier, 0.1f) - 7f) < 0.0001f);
