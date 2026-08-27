@@ -63,9 +63,16 @@ static class Program
 
         LocalizationTests.Run(Check);
 
-        Check("panel fits base sections",
+        Check("Terraria Chinese culture resolves simplified Chinese", LocalizationCultureRules.PrimaryResource("Chinese") == "zh-Hans");
+        Check("Terraria Japanese culture resolves Japanese", LocalizationCultureRules.PrimaryResource("Japanese") == "ja");
+        Check("traditional Chinese culture resolves traditional Chinese", LocalizationCultureRules.PrimaryResource("zh-TW") == "zh-Hant");
+
+        Check("panel uses compact width", PanelLayoutMetrics.PanelWidth == 500);
+        Check("panel uses compact height", PanelLayoutMetrics.PanelHeight == 520);
+        Check("panel uses compact setting rows", PanelLayoutMetrics.SettingRowHeight == 40);
+        Check("panel fits compact base sections",
             PanelLayoutMetrics.RequiredContentHeight(false, false, false) <= PanelLayoutMetrics.ContentHeight);
-        Check("panel fits full command state",
+        Check("panel fits compact full command state",
             PanelLayoutMetrics.RequiredContentHeight(true, true, true) <= PanelLayoutMetrics.ContentHeight);
         Check("panel disables Core clipping under UI scale",
             !PanelLayoutMetrics.UseContentClipping);

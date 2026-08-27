@@ -40,6 +40,7 @@
   "panel.clearAll": "Clear All World Items",
   "panel.clearConfirm": "Click again to clear all world items",
   "panel.hostOnly": "World-item commands are available to the host only.",
+  "panel.inputClear": "Clear",
   "panel.serverLimits": "SERVER LIMITS",
   "panel.placementLimit": "Placement: {0} tiles / {1:0.0}x",
   "panel.breakLimit": "Break: {0} tiles / {1:0.0}x",

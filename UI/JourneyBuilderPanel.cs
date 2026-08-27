@@ -27,8 +27,9 @@ namespace JourneyBuilder.UI
         private readonly TextInput _placementSpeedInput = NewInput();
         private readonly TextInput _breakSpeedInput = NewInput();
         private readonly TextInput _itemPickupRangeInput = NewInput();
-        private const int NumericInputWidth = 112;
-        private const int NumericUnitWidth = 24;
+        private const int NumericInputWidth = 88;
+        private const int NumericUnitWidth = 20;
+        private const int ButtonGap = 6;
         private bool _dirty;
         private DateTime _lastChangeUtc;
         private DateTime _clearConfirmationUntilUtc;
@@ -83,11 +84,17 @@ namespace JourneyBuilder.UI
                 _clampValues?.Invoke();
                 var layout = new StackLayout(_panel.ContentX, _panel.ContentY, _panel.ContentWidth, spacing: 4);
 
-                if (layout.Toggle(Text("panel.enabled", "Enabled"), _config.Enabled))
+                int leftButtonWidth = (layout.Width - ButtonGap) / 2;
+                int rightButtonX = layout.X + leftButtonWidth + ButtonGap;
+                int rightButtonWidth = layout.Width - leftButtonWidth - ButtonGap;
+                if (layout.ToggleAt(layout.X, leftButtonWidth, Text("panel.enabled", "Enabled"), _config.Enabled, PanelLayoutMetrics.CommandRowHeight))
                 {
                     _config.Enabled = !_config.Enabled;
                     MarkChanged();
                 }
+                if (layout.ButtonAt(rightButtonX, rightButtonWidth, Text("panel.reset", "Reset to Vanilla"), PanelLayoutMetrics.CommandRowHeight))
+                    ResetToVanilla();
+                layout.Advance(PanelLayoutMetrics.CommandRowHeight);
 
                 layout.SectionHeader(Text("panel.placement", "PLACEMENT"));
                 DrawIntegerSetting(ref layout, Text("panel.placementRange", "Placement range"), Text("unit.tiles", "tiles"), _config.PlacementRange, 1, _config.MaxPlacementRange, _placementRangeSlider, _placementRangeInput, value => _config.PlacementRange = value);
@@ -102,22 +109,11 @@ namespace JourneyBuilder.UI
                 DrawItemManagementCommands(ref layout);
 
                 layout.SectionHeader(Text("panel.serverLimits", "SERVER LIMITS"));
-                layout.Label(string.Format(CultureInfo.InvariantCulture, Text("panel.placementLimit", "Placement: {0} tiles / {1:0.0}x"), _config.MaxPlacementRange, _config.MaxPlacementSpeed), UIColors.TextDim, 22);
-                layout.Label(string.Format(CultureInfo.InvariantCulture, Text("panel.breakLimit", "Break: {0} tiles / {1:0.0}x"), _config.MaxBreakRange, _config.MaxBreakSpeed), UIColors.TextDim, 22);
+                DrawSmallLabel(ref layout, string.Format(CultureInfo.InvariantCulture, Text("panel.placementLimit", "Placement: {0} tiles / {1:0.0}x"), _config.MaxPlacementRange, _config.MaxPlacementSpeed), UIColors.TextDim);
+                DrawSmallLabel(ref layout, string.Format(CultureInfo.InvariantCulture, Text("panel.breakLimit", "Break: {0} tiles / {1:0.0}x"), _config.MaxBreakRange, _config.MaxBreakSpeed), UIColors.TextDim);
 
                 if (_showClampNotice?.Invoke() == true)
                     layout.Label(Text("panel.clamped", "Values were clamped to the server limits."), UIColors.Warning, 22);
-
-                if (layout.Button(Text("panel.reset", "Reset to Vanilla")))
-                {
-                    _config.PlacementRange = 5;
-                    _config.BreakRange = 5;
-                    _config.PlacementSpeed = 1f;
-                    _config.BreakSpeed = 1f;
-                    _config.ItemPickupRange = 5;
-                    MarkChanged();
-                    FlushSave();
-                }
 
                 if (_dirty && (DateTime.UtcNow - _lastChangeUtc).TotalMilliseconds >= 500)
                     FlushSave();
@@ -137,11 +133,14 @@ namespace JourneyBuilder.UI
             bool canUseCommands = _itemManagement != null && _itemManagement.CanUseWorldCommands;
             if (!canUseCommands)
             {
-                layout.Label(Text("panel.hostOnly", "World-item commands are available to the host only."), UIColors.TextDim, 22);
+                DrawSmallLabel(ref layout, Text("panel.hostOnly", "World-item commands are available to the host only."), UIColors.TextDim);
                 return;
             }
 
-            if (layout.Button(Text("panel.collectAll", "Pick Up All World Items"), PanelLayoutMetrics.CommandRowHeight))
+            int collectWidth = (layout.Width - ButtonGap) / 2;
+            int clearX = layout.X + collectWidth + ButtonGap;
+            int clearWidth = layout.Width - collectWidth - ButtonGap;
+            if (layout.ButtonAt(layout.X, collectWidth, Text("panel.collectAll", "Pick Up All World Items"), PanelLayoutMetrics.CommandRowHeight))
             {
                 Player localPlayer = Main.player != null && Main.myPlayer >= 0 && Main.myPlayer < Main.player.Length
                     ? Main.player[Main.myPlayer]
@@ -157,7 +156,7 @@ namespace JourneyBuilder.UI
             string clearText = clearConfirmed
                 ? Text("panel.clearConfirm", "Click again to clear all world items")
                 : Text("panel.clearAll", "Clear All World Items");
-            if (layout.Button(clearText, PanelLayoutMetrics.CommandRowHeight))
+            if (layout.ButtonAt(clearX, clearWidth, clearText, PanelLayoutMetrics.CommandRowHeight))
             {
                 if (clearConfirmed)
                 {
@@ -169,20 +168,21 @@ namespace JourneyBuilder.UI
                     _clearConfirmationUntilUtc = ItemManagementRules.ArmClearConfirmation(now);
                 }
             }
+            layout.Advance(PanelLayoutMetrics.CommandRowHeight);
         }
 
         private void DrawIntegerSetting(ref StackLayout layout, string label, string unit, int current, int minimum, int maximum, Slider slider, TextInput input, Action<int> assign)
         {
             int y = layout.Advance(PanelLayoutMetrics.SettingRowHeight);
-            UIRenderer.DrawText(label, layout.X, y, UIColors.Text);
+            UIRenderer.DrawTextSmall(label, layout.X, y + 1, UIColors.Text);
             int inputX = layout.X + layout.Width - NumericInputWidth - NumericUnitWidth;
             int sliderWidth = Math.Max(140, layout.Width - NumericInputWidth - NumericUnitWidth - 8);
             int maximumValue = Math.Max(minimum, maximum);
-            int value = slider.Draw(layout.X, y + 24, sliderWidth, 20, current, minimum, maximumValue);
-            PrepareInput(input, inputX, y + 22);
+            int value = slider.Draw(layout.X, y + 20, sliderWidth, 16, current, minimum, maximumValue);
+            PrepareInput(input, inputX, y + 18);
             SyncInput(input, value.ToString(CultureInfo.InvariantCulture));
-            string inputText = input.Draw(inputX, y + 22, NumericInputWidth, 24);
-            UIRenderer.DrawText(unit, inputX + NumericInputWidth + 4, y + 26, UIColors.TextDim);
+            string inputText = input.Draw(inputX, y + 18, NumericInputWidth, 20);
+            UIRenderer.DrawTextSmall(unit, inputX + NumericInputWidth + 3, y + 21, UIColors.TextDim);
             if (input.HasChanged && int.TryParse(inputText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int typedValue))
             {
                 typedValue = Math.Max(minimum, Math.Min(maximumValue, typedValue));
@@ -203,15 +203,15 @@ namespace JourneyBuilder.UI
         private void DrawFloatSetting(ref StackLayout layout, string label, string unit, float current, float minimum, float maximum, Slider slider, TextInput input, Action<float> assign)
         {
             int y = layout.Advance(PanelLayoutMetrics.SettingRowHeight);
-            UIRenderer.DrawText(label, layout.X, y, UIColors.Text);
+            UIRenderer.DrawTextSmall(label, layout.X, y + 1, UIColors.Text);
             int inputX = layout.X + layout.Width - NumericInputWidth - NumericUnitWidth;
             int sliderWidth = Math.Max(140, layout.Width - NumericInputWidth - NumericUnitWidth - 8);
             float maximumValue = Math.Max(minimum, maximum);
-            float value = slider.Draw(layout.X, y + 24, sliderWidth, 20, current, minimum, maximumValue);
-            PrepareInput(input, inputX, y + 22);
+            float value = slider.Draw(layout.X, y + 20, sliderWidth, 16, current, minimum, maximumValue);
+            PrepareInput(input, inputX, y + 18);
             SyncInput(input, value.ToString("0.0", CultureInfo.InvariantCulture));
-            string inputText = input.Draw(inputX, y + 22, NumericInputWidth, 24);
-            UIRenderer.DrawText(unit, inputX + NumericInputWidth + 4, y + 26, UIColors.TextDim);
+            string inputText = input.Draw(inputX, y + 18, NumericInputWidth, 20);
+            UIRenderer.DrawTextSmall(unit, inputX + NumericInputWidth + 3, y + 21, UIColors.TextDim);
             if (input.HasChanged && float.TryParse(inputText.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float typedValue))
             {
                 typedValue = Math.Max(minimum, Math.Min(maximumValue, typedValue));
@@ -236,6 +236,23 @@ namespace JourneyBuilder.UI
             _lastChangeUtc = DateTime.UtcNow;
         }
 
+        private void ResetToVanilla()
+        {
+            _config.PlacementRange = 5;
+            _config.BreakRange = 5;
+            _config.PlacementSpeed = 1f;
+            _config.BreakSpeed = 1f;
+            _config.ItemPickupRange = 5;
+            MarkChanged();
+            FlushSave();
+        }
+
+        private static void DrawSmallLabel(ref StackLayout layout, string text, Color4 color)
+        {
+            int y = layout.Advance(PanelLayoutMetrics.SmallLabelHeight);
+            UIRenderer.DrawTextSmall(text, layout.X, y + 2, color);
+        }
+
         private static TextInput NewInput()
             => new TextInput("", 16) { KeyBlockId = "journey-builder" };
 
@@ -257,7 +274,8 @@ namespace JourneyBuilder.UI
 
         private void PrepareInput(TextInput input, int x, int y)
         {
-            if (!UIRenderer.MouseLeftClick || !UIRenderer.IsMouseOver(x, y, NumericInputWidth, 24))
+            input.ClearLabel = Text("panel.inputClear", "Clear");
+            if (!UIRenderer.MouseLeftClick || !UIRenderer.IsMouseOver(x, y, NumericInputWidth, 20))
                 return;
 
             if (!ReferenceEquals(input, _placementRangeInput)) _placementRangeInput.Unfocus();

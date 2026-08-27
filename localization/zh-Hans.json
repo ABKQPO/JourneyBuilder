@@ -40,6 +40,7 @@
   "panel.clearAll": "清空全世界掉落物",
   "panel.clearConfirm": "再次点击以清空全世界掉落物",
   "panel.hostOnly": "世界掉落物操作仅限主机使用。",
+  "panel.inputClear": "清除",
   "panel.serverLimits": "服务器上限",
   "panel.placementLimit": "放置：{0} 格 / {1:0.0} 倍",
   "panel.breakLimit": "挖掘：{0} 格 / {1:0.0} 倍",

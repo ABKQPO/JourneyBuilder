@@ -40,6 +40,7 @@
   "panel.clearAll": "全ワールドアイテムを消去",
   "panel.clearConfirm": "もう一度クリックして全ワールドアイテムを消去",
   "panel.hostOnly": "ワールドアイテム操作はホストのみ使用できます。",
+  "panel.inputClear": "消去",
   "panel.serverLimits": "サーバー上限",
   "panel.placementLimit": "設置：{0} タイル / {1:0.0}倍",
   "panel.breakLimit": "採掘：{0} タイル / {1:0.0}倍",

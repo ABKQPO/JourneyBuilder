@@ -113,7 +113,11 @@ namespace JourneyBuilder
             string normalized = Normalize(culture);
             if (!string.IsNullOrEmpty(normalized))
             {
-                yield return normalized;
+                string resource = LocalizationCultureRules.PrimaryResource(normalized);
+                if (!string.IsNullOrEmpty(resource))
+                    yield return resource;
+                if (!string.Equals(resource, normalized, StringComparison.OrdinalIgnoreCase))
+                    yield return normalized;
                 int separator = normalized.IndexOf('-');
                 if (separator > 0)
                     yield return normalized.Substring(0, separator);
