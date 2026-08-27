@@ -6,6 +6,9 @@ tests/[Bb]in/
 tests/[Oo]bj/
 TestResults/
 
+# Local planning and workflow notes; never publish these to Git.
+docs/superpowers/
+
 # Local Terraria runtime files copied for inspection or decompilation.
 # Builds reference the sibling terraria-modder checkout instead.
 _*.decompiled.cs
