@@ -3,7 +3,7 @@
   "name": "JourneyBuilder",
   "version": "1.0.0",
   "author": "JourneyBuilder",
-  "description": "Adjust Terraria placement and breaking range and speed with an in-game panel.",
+  "description": "Adjust placement, breaking, and item pickup range with an in-game panel.",
   "icon": "icon.png",
   "localization": "localization",
   "entry_dll": "JourneyBuilder.dll",

@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="..\SettingsMath.cs" Link="SettingsMath.cs" />
+    <Compile Include="..\ItemManagementRules.cs" Link="ItemManagementRules.cs" />
     <Compile Include="..\..\terraria-modder\src\Core\Localization\CultureFallback.cs" Link="CultureFallback.cs" />
     <Compile Include="..\UI\PanelLayoutMetrics.cs" Link="PanelLayoutMetrics.cs" />
   </ItemGroup>

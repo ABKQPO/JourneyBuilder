@@ -32,20 +32,14 @@ static class Program
         Check("direct mining tool delay uses break multiplier",
             SettingsMath.ApplyBreakDelay(20, 2f) == 10);
 
-        Check("axe use delay applies the break multiplier after vanilla writes useTime",
-            SettingsMath.ApplyToolUseDelay(30, 4f) == 8);
+        Check("tool damage scales after the vanilla tool-tier check",
+            SettingsMath.ApplyToolDamage(25, 4f) == 100);
 
-        Check("hammer use delay applies the break multiplier after vanilla writes useTime",
-            SettingsMath.ApplyToolUseDelay(29, 4f) == 8);
+        Check("tool damage preserves a zero-damage vanilla result",
+            SettingsMath.ApplyToolDamage(0, 7f) == 0);
 
         Check("break delay keeps one frame minimum",
             SettingsMath.ApplyBreakDelay(1, 7f) == 1);
-
-        Check("wall-breaking delay uses the configured multiplier",
-            SettingsMath.ApplyWallBreakDelay(30, 2f) == 15);
-
-        Check("wall placement cooldown applies the placement multiplier after vanilla wallSpeed",
-            SettingsMath.ApplyWallPlacementDelay(25, 4f) == 7);
 
         Check("speed multiplier cap is seven",
             Math.Abs(SettingsMath.ClampToServer(20f, SettingsMath.MaxSpeedMultiplier, 0.1f) - 7f) < 0.0001f);
@@ -53,10 +47,26 @@ static class Program
         Check("server cap clamps local value",
             SettingsMath.ClampToServer(150, 100, 1) == 100);
 
+        Check("pickup range uses tile pixels", ItemManagementRules.ToPickupPixels(5) == 80);
+        Check("pickup range clamps to one tile", ItemManagementRules.ToPickupPixels(0) == 16);
+        Check("pickup range clamps to 100 tiles", ItemManagementRules.ToPickupPixels(101) == 1600);
+
+        DateTime now = new DateTime(2026, 8, 27, 12, 0, 0, DateTimeKind.Utc);
+        DateTime armedUntil = ItemManagementRules.ArmClearConfirmation(now);
+        Check("first clear click arms for three seconds", armedUntil == now.AddSeconds(3));
+        Check("second click inside window confirms", ItemManagementRules.IsClearConfirmed(armedUntil, now.AddSeconds(2)));
+        Check("expired clear window does not confirm", !ItemManagementRules.IsClearConfirmed(armedUntil, now.AddSeconds(3)));
+        Check("empty clear window does not confirm", !ItemManagementRules.IsClearConfirmed(DateTime.MinValue, now));
+        Check("single player owns world items", ItemManagementRules.CanMutateWorldItems(0, false));
+        Check("host and play owns world items", ItemManagementRules.CanMutateWorldItems(1, true));
+        Check("remote client cannot mutate world items", !ItemManagementRules.CanMutateWorldItems(1, false));
+
         LocalizationTests.Run(Check);
 
-        Check("panel content has room for every control",
-            PanelLayoutMetrics.RequiredContentHeight(true) <= PanelLayoutMetrics.ContentHeight);
+        Check("panel fits base sections",
+            PanelLayoutMetrics.RequiredContentHeight(false, false, false) <= PanelLayoutMetrics.ContentHeight);
+        Check("panel fits full command state",
+            PanelLayoutMetrics.RequiredContentHeight(true, true, true) <= PanelLayoutMetrics.ContentHeight);
         Check("panel disables Core clipping under UI scale",
             !PanelLayoutMetrics.UseContentClipping);
 

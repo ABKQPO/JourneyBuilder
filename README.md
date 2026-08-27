@@ -1,10 +1,10 @@
 # JourneyBuilder
 
-JourneyBuilder adds practical Journey Mode-style building controls to Terraria. Adjust placement range, break range, placement speed, and break speed while you play, then use the settings that fit the task at hand.
+JourneyBuilder adds practical Journey Mode-style building and item-management controls to Terraria. Adjust placement range, break range, placement speed, break speed, and item pickup range while you play, then use the settings that fit the task at hand.
 
 Open the draggable JourneyBuilder panel with `O`, or use the F6 Mod Menu for the same configuration. Every setting can be changed with a slider or by typing an exact number directly into the panel.
 
-The mod supports single-player and Host & Play. In multiplayer, configured client values are limited by the server maxima when available; this is a gameplay convenience mod, not a server-side anti-cheat system.
+The mod supports single-player and Host & Play. In multiplayer, configured client values are limited by the server maxima when available; world-item collection and clearing are disabled for remote clients because the server owns those items. This is a gameplay convenience mod, not a server-side anti-cheat system.
 
 ---
 
@@ -30,9 +30,13 @@ Sets the placement speed multiplier for tiles and walls. The effective final spe
 
 Sets the mining and breaking speed multiplier. The effective final speed, including Terraria's existing equipment, buff, and Journey Mode bonuses, is capped at 7.0x to prevent invalid zero-delay breaking.
 
+### Item Pickup Range
+
+Sets the local player's automatic world-item pickup range from 1 to 100 tiles. The default is 5 tiles. Terraria's normal item eligibility and inventory or Void Vault acceptance rules still apply.
+
 ### JourneyBuilder Panel
 
-Press `O` to open the draggable settings panel. It provides sliders and direct numeric input for all four settings, shows active server limits, and includes **Reset to Vanilla** to restore 5-tile ranges and 1.0x speeds. Press `Esc` or the panel close button to close it.
+Press `O` to open the draggable settings panel. It separates placement, breaking, and item management controls; every numeric setting has both a slider and direct input. It also includes **Pick Up All World Items**, which respects normal inventory and Void Vault acceptance, and **Clear All World Items**, which requires a second click within three seconds. These world-item commands are available only in single-player and Host & Play. **Reset to Vanilla** restores 5-tile ranges, 1.0x speeds, and a 5-tile item pickup range. Press `Esc` or the panel close button to close it.
 
 ---
 
@@ -52,7 +56,7 @@ When JourneyBuilder is available in TerrariaModder Vault, search for **JourneyBu
 4. Confirm that the folder contains `JourneyBuilder.dll` and `manifest.json`.
 5. Start the game through `TerrariaInjector.exe` or TerrariaModder Vault.
 
-For dedicated multiplayer, install JourneyBuilder on every client that should use its local controls. A modded server can define range and speed maxima, but the mod does not alter Terraria's core network protocol or provide authoritative anti-cheat enforcement.
+For dedicated multiplayer, install JourneyBuilder on every client that should use its local controls. A modded server can define range and speed maxima, but the mod does not alter Terraria's core network protocol or provide authoritative anti-cheat enforcement. Global world-item panel commands are intentionally unavailable to remote clients.
 
 ---
 

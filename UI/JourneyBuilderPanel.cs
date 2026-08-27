@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using Terraria;
 using TerrariaModder.Core.Input;
 using TerrariaModder.Core.Logging;
 using TerrariaModder.Core.UI;
@@ -14,26 +15,31 @@ namespace JourneyBuilder.UI
         private readonly Func<bool> _showClampNotice;
         private readonly Action _configChanged;
         private readonly ILogger _log;
+        private readonly ItemManagementService _itemManagement;
         private readonly DraggablePanel _panel;
         private readonly Slider _placementRangeSlider = new Slider();
         private readonly Slider _breakRangeSlider = new Slider();
         private readonly Slider _placementSpeedSlider = new Slider();
         private readonly Slider _breakSpeedSlider = new Slider();
+        private readonly Slider _itemPickupRangeSlider = new Slider();
         private readonly TextInput _placementRangeInput = NewInput();
         private readonly TextInput _breakRangeInput = NewInput();
         private readonly TextInput _placementSpeedInput = NewInput();
         private readonly TextInput _breakSpeedInput = NewInput();
+        private readonly TextInput _itemPickupRangeInput = NewInput();
         private const int NumericInputWidth = 112;
         private const int NumericUnitWidth = 24;
         private bool _dirty;
         private DateTime _lastChangeUtc;
+        private DateTime _clearConfirmationUntilUtc;
 
-        public JourneyBuilderPanel(JourneyBuilderConfig config, Action clampValues, Func<bool> showClampNotice, Action configChanged, ILogger log)
+        internal JourneyBuilderPanel(JourneyBuilderConfig config, Action clampValues, Func<bool> showClampNotice, Action configChanged, ItemManagementService itemManagement, ILogger log)
         {
             _config = config;
             _clampValues = clampValues;
             _showClampNotice = showClampNotice;
             _configChanged = configChanged;
+            _itemManagement = itemManagement;
             _log = log;
             _panel = new DraggablePanel("journey-builder", "JourneyBuilder",
                 PanelLayoutMetrics.PanelWidth, PanelLayoutMetrics.PanelHeight)
@@ -77,20 +83,23 @@ namespace JourneyBuilder.UI
                 _clampValues?.Invoke();
                 var layout = new StackLayout(_panel.ContentX, _panel.ContentY, _panel.ContentWidth, spacing: 4);
 
-                layout.SectionHeader(Text("panel.general", "GENERAL"));
                 if (layout.Toggle(Text("panel.enabled", "Enabled"), _config.Enabled))
                 {
                     _config.Enabled = !_config.Enabled;
                     MarkChanged();
                 }
 
-                layout.SectionHeader(Text("panel.range", "RANGE"));
+                layout.SectionHeader(Text("panel.placement", "PLACEMENT"));
                 DrawIntegerSetting(ref layout, Text("panel.placementRange", "Placement range"), Text("unit.tiles", "tiles"), _config.PlacementRange, 1, _config.MaxPlacementRange, _placementRangeSlider, _placementRangeInput, value => _config.PlacementRange = value);
-                DrawIntegerSetting(ref layout, Text("panel.breakRange", "Break range"), Text("unit.tiles", "tiles"), _config.BreakRange, 1, _config.MaxBreakRange, _breakRangeSlider, _breakRangeInput, value => _config.BreakRange = value);
-
-                layout.SectionHeader(Text("panel.speed", "SPEED"));
                 DrawFloatSetting(ref layout, Text("panel.placementSpeed", "Placement speed"), Text("unit.multiplier", "x"), _config.PlacementSpeed, 0.1f, _config.MaxPlacementSpeed, _placementSpeedSlider, _placementSpeedInput, value => _config.PlacementSpeed = value);
+
+                layout.SectionHeader(Text("panel.breaking", "BREAKING"));
+                DrawIntegerSetting(ref layout, Text("panel.breakRange", "Break range"), Text("unit.tiles", "tiles"), _config.BreakRange, 1, _config.MaxBreakRange, _breakRangeSlider, _breakRangeInput, value => _config.BreakRange = value);
                 DrawFloatSetting(ref layout, Text("panel.breakSpeed", "Break speed"), Text("unit.multiplier", "x"), _config.BreakSpeed, 0.1f, _config.MaxBreakSpeed, _breakSpeedSlider, _breakSpeedInput, value => _config.BreakSpeed = value);
+
+                layout.SectionHeader(Text("panel.items", "ITEM MANAGEMENT"));
+                DrawIntegerSetting(ref layout, Text("panel.itemPickupRange", "Item pickup range"), Text("unit.tiles", "tiles"), _config.ItemPickupRange, ItemManagementRules.MinimumPickupTiles, ItemManagementRules.MaximumPickupTiles, _itemPickupRangeSlider, _itemPickupRangeInput, value => _config.ItemPickupRange = value);
+                DrawItemManagementCommands(ref layout);
 
                 layout.SectionHeader(Text("panel.serverLimits", "SERVER LIMITS"));
                 layout.Label(string.Format(CultureInfo.InvariantCulture, Text("panel.placementLimit", "Placement: {0} tiles / {1:0.0}x"), _config.MaxPlacementRange, _config.MaxPlacementSpeed), UIColors.TextDim, 22);
@@ -105,6 +114,7 @@ namespace JourneyBuilder.UI
                     _config.BreakRange = 5;
                     _config.PlacementSpeed = 1f;
                     _config.BreakSpeed = 1f;
+                    _config.ItemPickupRange = 5;
                     MarkChanged();
                     FlushSave();
                 }
@@ -119,6 +129,45 @@ namespace JourneyBuilder.UI
             finally
             {
                 _panel.EndDraw();
+            }
+        }
+
+        private void DrawItemManagementCommands(ref StackLayout layout)
+        {
+            bool canUseCommands = _itemManagement != null && _itemManagement.CanUseWorldCommands;
+            if (!canUseCommands)
+            {
+                layout.Label(Text("panel.hostOnly", "World-item commands are available to the host only."), UIColors.TextDim, 22);
+                return;
+            }
+
+            if (layout.Button(Text("panel.collectAll", "Pick Up All World Items"), PanelLayoutMetrics.CommandRowHeight))
+            {
+                Player localPlayer = Main.player != null && Main.myPlayer >= 0 && Main.myPlayer < Main.player.Length
+                    ? Main.player[Main.myPlayer]
+                    : null;
+                _itemManagement.CollectAll(localPlayer);
+            }
+
+            DateTime now = DateTime.UtcNow;
+            bool clearConfirmed = ItemManagementRules.IsClearConfirmed(_clearConfirmationUntilUtc, now);
+            if (!clearConfirmed)
+                _clearConfirmationUntilUtc = DateTime.MinValue;
+
+            string clearText = clearConfirmed
+                ? Text("panel.clearConfirm", "Click again to clear all world items")
+                : Text("panel.clearAll", "Clear All World Items");
+            if (layout.Button(clearText, PanelLayoutMetrics.CommandRowHeight))
+            {
+                if (clearConfirmed)
+                {
+                    _itemManagement.ClearAll();
+                    _clearConfirmationUntilUtc = DateTime.MinValue;
+                }
+                else
+                {
+                    _clearConfirmationUntilUtc = ItemManagementRules.ArmClearConfirmation(now);
+                }
             }
         }
 
@@ -215,11 +264,13 @@ namespace JourneyBuilder.UI
             if (!ReferenceEquals(input, _breakRangeInput)) _breakRangeInput.Unfocus();
             if (!ReferenceEquals(input, _placementSpeedInput)) _placementSpeedInput.Unfocus();
             if (!ReferenceEquals(input, _breakSpeedInput)) _breakSpeedInput.Unfocus();
+            if (!ReferenceEquals(input, _itemPickupRangeInput)) _itemPickupRangeInput.Unfocus();
         }
 
         private void OnPanelClosed()
         {
             UnfocusInputs();
+            _clearConfirmationUntilUtc = DateTime.MinValue;
             FlushSave();
         }
 
@@ -229,6 +280,7 @@ namespace JourneyBuilder.UI
             _breakRangeInput.Unfocus();
             _placementSpeedInput.Unfocus();
             _breakSpeedInput.Unfocus();
+            _itemPickupRangeInput.Unfocus();
         }
 
         private void FlushSave()

@@ -51,19 +51,13 @@ namespace JourneyBuilder
             return Math.Max(1, (int)Math.Ceiling(adjusted));
         }
 
-        public static int ApplyToolUseDelay(int frames, float multiplier)
+        public static int ApplyToolDamage(int damage, float multiplier)
         {
-            return ApplyBreakDelay(frames, multiplier);
-        }
+            if (damage <= 0)
+                return damage;
 
-        public static int ApplyWallBreakDelay(int frames, float multiplier)
-        {
-            return ApplyBreakDelay(frames, multiplier);
-        }
-
-        public static int ApplyWallPlacementDelay(int frames, float multiplier)
-        {
-            return ApplyBreakDelay(frames, multiplier);
+            float requested = Math.Max(0.1f, multiplier);
+            return Math.Max(1, (int)Math.Ceiling(damage * requested));
         }
 
         public static PlacementSpeedValues ApplyPlacementSpeed(float tileSpeed, float wallSpeed, float multiplier)

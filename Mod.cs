@@ -29,6 +29,9 @@ namespace JourneyBuilder
         [Client, Label("Break Speed"), Description("Total mining and breaking speed multiplier, including vanilla bonuses. The final speed is capped at 7x."), Range(0.1f, SettingsMath.MaxSpeedMultiplier)]
         public float BreakSpeed { get; set; } = 1f;
 
+        [Client, Label("Item Pickup Range"), Description("Automatic world-item pickup range in tiles."), Range(1, 100)]
+        public int ItemPickupRange { get; set; } = 5;
+
         [Server, Label("Max Placement Range"), Description("Maximum placement range clients may configure."), Range(1, 100)]
         public int MaxPlacementRange { get; set; } = 100;
 
@@ -53,13 +56,17 @@ namespace JourneyBuilder
         private Harmony _harmony;
         private MethodInfo _itemCheckMethod;
         private MethodInfo _tileReachMethod;
-        private MethodInfo _toolItemTimeMethod;
-        private MethodInfo _wallHitMethod;
-        private MethodInfo _wallItemTimeMethod;
+        private MethodInfo _itemGrabRangeMethod;
+        private MethodInfo _miningToolMethod;
+        private MethodInfo _hitTileAddDamageMethod;
+        private MethodInfo _pickWallMethod;
         private MethodInfo _smartToolStrategyMethod;
         [ThreadStatic]
         private static bool _smartToolStrategyActive;
+        [ThreadStatic]
+        private static float _toolDamageMultiplier;
         private JourneyBuilderPanel _panel;
+        private ItemManagementService _itemManagement;
         private DateTime _clampNoticeUntilUtc;
 
         public string Id => "journey-builder";
@@ -95,7 +102,8 @@ namespace JourneyBuilder
                 JourneyBuilderLocalization.Get("keybind.toggle.description", "Open or close the JourneyBuilder settings panel"),
                 "O",
                 TogglePanel);
-            _panel = new JourneyBuilderPanel(_config, ClampClientValues, () => DateTime.UtcNow < _clampNoticeUntilUtc, OnPanelChanged, _log);
+            _itemManagement = new ItemManagementService(_log);
+            _panel = new JourneyBuilderPanel(_config, ClampClientValues, () => DateTime.UtcNow < _clampNoticeUntilUtc, OnPanelChanged, _itemManagement, _log);
             _panel.RegisterDrawCallback();
 
             _log.Info("JourneyBuilder initialized. Press O to open the settings panel.");
@@ -133,20 +141,27 @@ namespace JourneyBuilder
                     new[] { typeof(int), typeof(int), typeof(TileReachCheckSettings), typeof(int) },
                     null);
 
-                _toolItemTimeMethod = typeof(Player).GetMethod(
-                    "ApplyItemTime",
+                _itemGrabRangeMethod = typeof(Player).GetMethod(
+                    "GetItemGrabRange",
                     BindingFlags.Public | BindingFlags.Instance,
                     null,
-                    new[] { typeof(Item) },
+                    new[] { typeof(WorldItem) },
                     null);
-                _wallHitMethod = typeof(Player).GetMethod(
-                    "ItemCheck_UseMiningTools_TryHittingWall",
+
+                _miningToolMethod = typeof(Player).GetMethod(
+                    "ItemCheck_UseMiningTools_ActuallyUseMiningTool",
                     BindingFlags.NonPublic | BindingFlags.Instance);
-                _wallItemTimeMethod = typeof(Player).GetMethod(
-                    "ApplyItemTime",
+                _hitTileAddDamageMethod = typeof(HitTile).GetMethod(
+                    "AddDamage",
                     BindingFlags.Public | BindingFlags.Instance,
                     null,
-                    new[] { typeof(Item), typeof(float) },
+                    new[] { typeof(int), typeof(int), typeof(bool) },
+                    null);
+                _pickWallMethod = typeof(Player).GetMethod(
+                    "PickWall",
+                    BindingFlags.Public | BindingFlags.Instance,
+                    null,
+                    new[] { typeof(int), typeof(int), typeof(int) },
                     null);
                 _smartToolStrategyMethod = typeof(Player).GetMethod(
                     "SmartSelect_GetToolStrategy",
@@ -167,35 +182,45 @@ namespace JourneyBuilder
                     _log.Warn("JourneyBuilder: Player.IsInTileInteractionRange() was not found; range limits may remain vanilla.");
                 }
 
-                if (_toolItemTimeMethod != null)
+                if (_itemGrabRangeMethod != null)
                 {
-                    _harmony.Patch(_toolItemTimeMethod,
-                        postfix: new HarmonyMethod(typeof(Mod), nameof(ToolItemTimePostfix)));
+                    _harmony.Patch(_itemGrabRangeMethod,
+                        postfix: new HarmonyMethod(typeof(Mod), nameof(ItemGrabRangePostfix)));
                 }
                 else
                 {
-                    _log.Warn("JourneyBuilder: Player.ApplyItemTime(Item) was not found; axe and hammer timing remains vanilla.");
+                    _log.Warn("JourneyBuilder: Player.GetItemGrabRange(WorldItem) was not found; pickup range remains vanilla.");
                 }
 
-                if (_wallHitMethod != null)
+                if (_miningToolMethod != null)
                 {
-                    _harmony.Patch(_wallHitMethod,
-                        prefix: new HarmonyMethod(typeof(Mod), nameof(WallHitPrefix)),
-                        postfix: new HarmonyMethod(typeof(Mod), nameof(WallHitPostfix)));
+                    _harmony.Patch(_miningToolMethod,
+                        prefix: new HarmonyMethod(typeof(Mod), nameof(MiningToolPrefix)),
+                        postfix: new HarmonyMethod(typeof(Mod), nameof(MiningToolPostfix)));
                 }
                 else
                 {
-                    _log.Warn("JourneyBuilder: wall hammer method was not found; wall removal timing remains vanilla.");
+                    _log.Warn("JourneyBuilder: mining tool method was not found; axe and hammer damage remains vanilla.");
                 }
 
-                if (_wallItemTimeMethod != null)
+                if (_hitTileAddDamageMethod != null)
                 {
-                    _harmony.Patch(_wallItemTimeMethod,
-                        postfix: new HarmonyMethod(typeof(Mod), nameof(WallItemTimePostfix)));
+                    _harmony.Patch(_hitTileAddDamageMethod,
+                        prefix: new HarmonyMethod(typeof(Mod), nameof(HitTileAddDamagePrefix)));
                 }
                 else
                 {
-                    _log.Warn("JourneyBuilder: Player.ApplyItemTime(Item, float) was not found; wall placement timing remains vanilla.");
+                    _log.Warn("JourneyBuilder: HitTile.AddDamage() was not found; axe and hammer damage remains vanilla.");
+                }
+
+                if (_pickWallMethod != null)
+                {
+                    _harmony.Patch(_pickWallMethod,
+                        prefix: new HarmonyMethod(typeof(Mod), nameof(PickWallPrefix)));
+                }
+                else
+                {
+                    _log.Warn("JourneyBuilder: Player.PickWall() was not found; wall damage remains vanilla.");
                 }
 
                 if (_smartToolStrategyMethod != null)
@@ -251,6 +276,7 @@ namespace JourneyBuilder
                     float speed = SettingsMath.ClampToServer(mod._config.PlacementSpeed, mod._config.MaxPlacementSpeed, 0.1f);
                     PlacementSpeedValues placement = SettingsMath.ApplyPlacementSpeed(__instance.tileSpeed, __instance.wallSpeed, speed);
                     __instance.tileSpeed = placement.Tile;
+                    __instance.wallSpeed = placement.Wall;
                 }
                 else if (__instance.pickSpeed > 0f)
                 {
@@ -264,45 +290,61 @@ namespace JourneyBuilder
             }
         }
 
-        private static void ToolItemTimePostfix(Player __instance, Item sItem)
+        private static void ItemGrabRangePostfix(Player __instance, ref int __result)
         {
             Mod mod = _instance;
-            if (!CanModifyPlayer(__instance, mod) || sItem == null || __instance.itemTime <= 0 ||
-                (sItem.axe <= 0 && sItem.hammer <= 0))
+            if (!CanModifyPlayer(__instance, mod))
+                return;
+
+            try
+            {
+                __result = ItemManagementRules.ToPickupPixels(mod._config.ItemPickupRange);
+            }
+            catch (Exception ex)
+            {
+                mod._log?.Error("JourneyBuilder: item pickup range postfix failed; vanilla range was used.", ex);
+            }
+        }
+
+        private static void MiningToolPrefix(Player __instance, Item sItem, int x, int y, ref float __state)
+        {
+            Mod mod = _instance;
+            __state = _toolDamageMultiplier;
+            _toolDamageMultiplier = 0f;
+            if (!CanModifyPlayer(__instance, mod) || sItem == null || Main.tile == null ||
+                !WorldGen.InWorld(x, y, 1))
+                return;
+
+            Tile target = Main.tile[x, y];
+            if (target == null ||
+                !((sItem.axe > 0 && Main.tileAxe[target.type]) ||
+                  (sItem.hammer > 0 && Main.tileHammer[target.type])))
+                return;
+
+            _toolDamageMultiplier = SettingsMath.ClampToServer(
+                mod._config.BreakSpeed, mod._config.MaxBreakSpeed, 0.1f);
+        }
+
+        private static void MiningToolPostfix(Player __instance, Item sItem, int x, int y, float __state)
+        {
+            _toolDamageMultiplier = __state;
+        }
+
+        private static void HitTileAddDamagePrefix(ref int damageAmount)
+        {
+            if (_toolDamageMultiplier > 0f && damageAmount > 0)
+                damageAmount = SettingsMath.ApplyToolDamage(damageAmount, _toolDamageMultiplier);
+        }
+
+        private static void PickWallPrefix(Player __instance, ref int damage)
+        {
+            Mod mod = _instance;
+            if (!CanModifyPlayer(__instance, mod) || damage <= 0)
                 return;
 
             float speed = SettingsMath.ClampToServer(
                 mod._config.BreakSpeed, mod._config.MaxBreakSpeed, 0.1f);
-            __instance.SetItemTime(SettingsMath.ApplyToolUseDelay(__instance.itemTime, speed));
-        }
-
-        private static void WallHitPrefix(Player __instance, ref int __state)
-        {
-            __state = __instance?.itemTime ?? 0;
-        }
-
-        private static void WallHitPostfix(Player __instance, Item sItem, int wX, int wY, int __state)
-        {
-            Mod mod = _instance;
-            if (!CanModifyPlayer(__instance, mod) || sItem == null || sItem.hammer <= 0 ||
-                __instance.itemTime <= 0 || __instance.itemTime == __state)
-                return;
-
-            float speed = SettingsMath.ClampToServer(
-                mod._config.BreakSpeed, mod._config.MaxBreakSpeed, 0.1f);
-            __instance.SetItemTime(SettingsMath.ApplyWallBreakDelay(__instance.itemTime, speed));
-        }
-
-        private static void WallItemTimePostfix(Player __instance, Item sItem, float multiplier)
-        {
-            Mod mod = _instance;
-            if (!CanModifyPlayer(__instance, mod) || sItem == null || sItem.createWall < 0 ||
-                __instance.itemTime <= 0)
-                return;
-
-            float speed = SettingsMath.ClampToServer(
-                mod._config.PlacementSpeed, mod._config.MaxPlacementSpeed, 0.1f);
-            __instance.SetItemTime(SettingsMath.ApplyWallPlacementDelay(__instance.itemTime, speed));
+            damage = SettingsMath.ApplyToolDamage(damage, speed);
         }
 
         private static void SmartToolStrategyPrefix(Player __instance)
@@ -377,6 +419,7 @@ namespace JourneyBuilder
 
             int oldPlacementRange = _config.PlacementRange;
             int oldBreakRange = _config.BreakRange;
+            int oldItemPickupRange = _config.ItemPickupRange;
             float oldPlacementSpeed = _config.PlacementSpeed;
             float oldBreakSpeed = _config.BreakSpeed;
 
@@ -385,10 +428,12 @@ namespace JourneyBuilder
 
             _config.PlacementRange = SettingsMath.ClampToServer(_config.PlacementRange, _config.MaxPlacementRange, 1);
             _config.BreakRange = SettingsMath.ClampToServer(_config.BreakRange, _config.MaxBreakRange, 1);
+            _config.ItemPickupRange = ItemManagementRules.ClampPickupTiles(_config.ItemPickupRange);
             _config.PlacementSpeed = SettingsMath.ClampToServer(_config.PlacementSpeed, _config.MaxPlacementSpeed, 0.1f);
             _config.BreakSpeed = SettingsMath.ClampToServer(_config.BreakSpeed, _config.MaxBreakSpeed, 0.1f);
 
             if (oldPlacementRange != _config.PlacementRange || oldBreakRange != _config.BreakRange ||
+                oldItemPickupRange != _config.ItemPickupRange ||
                 Math.Abs(oldPlacementSpeed - _config.PlacementSpeed) > 0.0001f ||
                 Math.Abs(oldBreakSpeed - _config.BreakSpeed) > 0.0001f)
             {
@@ -417,11 +462,14 @@ namespace JourneyBuilder
             _harmony = null;
             _itemCheckMethod = null;
             _tileReachMethod = null;
-            _toolItemTimeMethod = null;
-            _wallHitMethod = null;
-            _wallItemTimeMethod = null;
+            _itemGrabRangeMethod = null;
+            _miningToolMethod = null;
+            _hitTileAddDamageMethod = null;
+            _pickWallMethod = null;
             _smartToolStrategyMethod = null;
             _smartToolStrategyActive = false;
+            _toolDamageMultiplier = 0f;
+            _itemManagement = null;
 
             if (_panel != null)
             {
