@@ -35,6 +35,9 @@ static class Program
         Check("break delay keeps one frame minimum",
             SettingsMath.ApplyBreakDelay(1, 7f) == 1);
 
+        Check("wall-breaking delay uses the configured multiplier",
+            SettingsMath.ApplyWallBreakDelay(30, 2f) == 15);
+
         Check("speed multiplier cap is seven",
             Math.Abs(SettingsMath.ClampToServer(20f, SettingsMath.MaxSpeedMultiplier, 0.1f) - 7f) < 0.0001f);
 

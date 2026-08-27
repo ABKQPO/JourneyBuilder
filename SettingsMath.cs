@@ -51,6 +51,16 @@ namespace JourneyBuilder
             return Math.Max(1, (int)Math.Ceiling(adjusted));
         }
 
+        public static int ApplyWallBreakDelay(int frames, float multiplier)
+        {
+            return ApplyBreakDelay(frames, multiplier);
+        }
+
+        public static int ApplyWallPlacementDelay(int frames, float multiplier)
+        {
+            return ApplyBreakDelay(frames, multiplier);
+        }
+
         public static PlacementSpeedValues ApplyPlacementSpeed(float tileSpeed, float wallSpeed, float multiplier)
         {
             // These values are already the final vanilla delay factors after
