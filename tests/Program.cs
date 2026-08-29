@@ -57,13 +57,16 @@ static class Program
         Check("second click inside window confirms", ItemManagementRules.IsClearConfirmed(armedUntil, now.AddSeconds(2)));
         Check("expired clear window does not confirm", !ItemManagementRules.IsClearConfirmed(armedUntil, now.AddSeconds(3)));
         Check("empty clear window does not confirm", !ItemManagementRules.IsClearConfirmed(DateTime.MinValue, now));
-        Check("single player owns world items", ItemManagementRules.CanMutateWorldItems(0, false));
-        Check("host and play owns world items", ItemManagementRules.CanMutateWorldItems(1, true));
-        Check("remote client cannot mutate world items", !ItemManagementRules.CanMutateWorldItems(1, false));
+        Check("remote clients route collect-all through the server", ItemManagementRules.ShouldRequestServerCommand(1));
+        Check("local worlds do not send a collect-all request", !ItemManagementRules.ShouldRequestServerCommand(0));
+        Check("world-item commands use stable names", ItemManagementRules.IsWorldItemCommand(ItemManagementRules.CollectAllCommand) &&
+            ItemManagementRules.IsWorldItemCommand(ItemManagementRules.ClearAllCommand));
+        Check("unknown server commands are not world-item commands", !ItemManagementRules.IsWorldItemCommand("journeybuilder_unknown"));
 
         LocalizationTests.Run(Check);
 
         Check("Terraria Chinese culture resolves simplified Chinese", LocalizationCultureRules.PrimaryResource("Chinese") == "zh-Hans");
+        Check("Terraria simplified Chinese culture resolves simplified Chinese", LocalizationCultureRules.PrimaryResource("SimplifiedChinese") == "zh-Hans");
         Check("Terraria Japanese culture resolves Japanese", LocalizationCultureRules.PrimaryResource("Japanese") == "ja");
         Check("traditional Chinese culture resolves traditional Chinese", LocalizationCultureRules.PrimaryResource("zh-TW") == "zh-Hant");
 

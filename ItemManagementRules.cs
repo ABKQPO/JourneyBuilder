@@ -4,6 +4,8 @@ namespace JourneyBuilder
 {
     internal static class ItemManagementRules
     {
+        internal const string CollectAllCommand = "journeybuilder_collect_world_items";
+        internal const string ClearAllCommand = "journeybuilder_clear_world_items";
         internal const int MinimumPickupTiles = 1;
         internal const int MaximumPickupTiles = 100;
         internal const int PixelsPerTile = 16;
@@ -18,9 +20,15 @@ namespace JourneyBuilder
             return ClampPickupTiles(tiles) * PixelsPerTile;
         }
 
-        internal static bool CanMutateWorldItems(int netMode, bool isHostAndPlay)
+        internal static bool ShouldRequestServerCommand(int netMode)
         {
-            return netMode != 1 || isHostAndPlay;
+            return netMode == 1;
+        }
+
+        internal static bool IsWorldItemCommand(string command)
+        {
+            return string.Equals(command, CollectAllCommand, StringComparison.Ordinal) ||
+                string.Equals(command, ClearAllCommand, StringComparison.Ordinal);
         }
 
         internal static DateTime ArmClearConfirmation(DateTime nowUtc)

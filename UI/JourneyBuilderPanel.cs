@@ -133,7 +133,7 @@ namespace JourneyBuilder.UI
             bool canUseCommands = _itemManagement != null && _itemManagement.CanUseWorldCommands;
             if (!canUseCommands)
             {
-                DrawSmallLabel(ref layout, Text("panel.hostOnly", "World-item commands are available to the host only."), UIColors.TextDim);
+                DrawSmallLabel(ref layout, Text("panel.adminOnly", "World-item commands require server Admin permission."), UIColors.TextDim);
                 return;
             }
 
@@ -254,7 +254,11 @@ namespace JourneyBuilder.UI
         }
 
         private static TextInput NewInput()
-            => new TextInput("", 16) { KeyBlockId = "journey-builder" };
+            => new TextInput("", 16)
+            {
+                KeyBlockId = "journey-builder",
+                ShowClearButton = false
+            };
 
         private static void SyncInput(TextInput input, string value)
         {

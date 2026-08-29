@@ -13,11 +13,15 @@ namespace JourneyBuilder
             switch (normalized.ToLowerInvariant())
             {
                 case "chinese":
+                case "simplifiedchinese":
+                case "chinesesimplified":
+                case "chinese-simplified":
                 case "zh":
                 case "zh-cn":
                 case "zh-hans":
                     return "zh-Hans";
                 case "traditionalchinese":
+                case "chinesetraditional":
                 case "chinese-traditional":
                 case "zh-tw":
                 case "zh-hant":

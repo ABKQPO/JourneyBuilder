@@ -36,6 +36,11 @@ namespace JourneyBuilder
             ApplyConfigMetadata(config);
         }
 
+        public static void RefreshConfigMetadata(JourneyBuilderConfig config)
+        {
+            ApplyConfigMetadata(config);
+        }
+
         public static string Get(string key, string fallback = null)
         {
             foreach (string culture in CultureCandidates(CurrentCulture()))

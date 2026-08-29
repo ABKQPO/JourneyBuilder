@@ -6,6 +6,7 @@ using Terraria.DataStructures;
 using TerrariaModder.Core;
 using TerrariaModder.Core.Config;
 using TerrariaModder.Core.Logging;
+using TerrariaModder.Core.Net;
 using JourneyBuilder.UI;
 
 namespace JourneyBuilder
@@ -67,6 +68,11 @@ namespace JourneyBuilder
         private static float _toolDamageMultiplier;
         private JourneyBuilderPanel _panel;
         private ItemManagementService _itemManagement;
+        private Action<int, string> _collectAllServerCommandHandler;
+        private Action<int, string> _clearAllServerCommandHandler;
+        private bool _collectAllServerCommandRegistered;
+        private bool _clearAllServerCommandRegistered;
+        private bool _serverResponseSubscribed;
         private DateTime _clampNoticeUntilUtc;
 
         public string Id => "journey-builder";
@@ -90,8 +96,20 @@ namespace JourneyBuilder
 
             ClampClientValues();
 
+            _itemManagement = new ItemManagementService(_log);
+
             if (context.IsServer)
             {
+                _collectAllServerCommandHandler = (callerSlot, _) =>
+                    _itemManagement?.HandleServerCommand(callerSlot, ItemManagementRules.CollectAllCommand);
+                _clearAllServerCommandHandler = (callerSlot, _) =>
+                    _itemManagement?.HandleServerCommand(callerSlot, ItemManagementRules.ClearAllCommand);
+                _collectAllServerCommandRegistered = ServerCommandRegistry.Register(
+                    ItemManagementRules.CollectAllCommand, _collectAllServerCommandHandler);
+                _clearAllServerCommandRegistered = ServerCommandRegistry.Register(
+                    ItemManagementRules.ClearAllCommand, _clearAllServerCommandHandler);
+                if (!_collectAllServerCommandRegistered || !_clearAllServerCommandRegistered)
+                    _log.Warn("JourneyBuilder: could not register one or more server world-item commands.");
                 _log.Info("JourneyBuilder: dedicated server mode, UI and client patches skipped.");
                 return;
             }
@@ -102,7 +120,8 @@ namespace JourneyBuilder
                 JourneyBuilderLocalization.Get("keybind.toggle.description", "Open or close the JourneyBuilder settings panel"),
                 "O",
                 TogglePanel);
-            _itemManagement = new ItemManagementService(_log);
+            NetSync.OnServerCommandResponse += OnServerCommandResponse;
+            _serverResponseSubscribed = true;
             _panel = new JourneyBuilderPanel(_config, ClampClientValues, () => DateTime.UtcNow < _clampNoticeUntilUtc, OnPanelChanged, _itemManagement, _log);
             _panel.RegisterDrawCallback();
 
@@ -111,7 +130,12 @@ namespace JourneyBuilder
 
         public static void OnGameReady()
         {
-            _instance?.ApplyPatches();
+            Mod mod = _instance;
+            if (mod == null)
+                return;
+
+            JourneyBuilderLocalization.RefreshConfigMetadata(mod._config);
+            mod.ApplyPatches();
         }
 
         private void ApplyPatches()
@@ -412,6 +436,11 @@ namespace JourneyBuilder
             ClampClientValues();
         }
 
+        private void OnServerCommandResponse(string command, string result)
+        {
+            _itemManagement?.HandleServerCommandResponse(command, result);
+        }
+
         private void ClampClientValues()
         {
             if (_config == null)
@@ -450,6 +479,25 @@ namespace JourneyBuilder
 
         public void Unload()
         {
+            if (_collectAllServerCommandRegistered)
+            {
+                ServerCommandRegistry.Unregister(ItemManagementRules.CollectAllCommand, _collectAllServerCommandHandler);
+                _collectAllServerCommandRegistered = false;
+            }
+            if (_clearAllServerCommandRegistered)
+            {
+                ServerCommandRegistry.Unregister(ItemManagementRules.ClearAllCommand, _clearAllServerCommandHandler);
+                _clearAllServerCommandRegistered = false;
+            }
+            _collectAllServerCommandHandler = null;
+            _clearAllServerCommandHandler = null;
+
+            if (_serverResponseSubscribed)
+            {
+                NetSync.OnServerCommandResponse -= OnServerCommandResponse;
+                _serverResponseSubscribed = false;
+            }
+
             try
             {
                 _harmony?.UnpatchAll(HarmonyId);
